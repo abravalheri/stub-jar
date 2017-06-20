@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Create an executable from jar.
+# Originally taken from
+# https://coderwall.com/p/ssuaxa/how-to-make-a-jar-file-linux-executable
+set -e
+
+echo-help() {
+  echo -e "Usage: $0 (--help | <jar_path> [-o <executable_path>])\n"
+  echo -e "Create an executable from a jar file."
+  echo -e "Note that the jar file MUST be able to be executed with \`java -jar\`\n"
+  echo -e "Options:"
+  echo -e "  -h, --help\tDisplay this message and exit"
+  echo -e "  -o, --output\tPath where the executable stub should be generated"
+}
+
+run() {
+  local input_path output_path key exit_code
+  output_path=""
+  input_path=""
+
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+
+    case $key in
+      -h|--help)
+        echo-help
+        return 1
+      ;;
+      -o|--output)
+        output_path="$2"
+        shift
+      ;;
+      *)
+        input_path="$1"
+      ;;
+    esac
+    shift
+  done
+
+  if [[ -z "$output_path" ]]; then
+    output_path=${input_path%.jar}
+  fi
+
+  cat - <<'EOT' "$input_path" > "$output_path"
+#!/bin/sh
+MYSELF=`which "$0" 2>/dev/null`
+[ $? -gt 0 -a -f "$0" ] && MYSELF="./$0"
+java=java
+if test -n "$JAVA_HOME"; then
+    java="$JAVA_HOME/bin/java"
+fi
+exec "$java" $java_args -jar $MYSELF "$@"
+exit 1
+EOT
+  chmod +x "$output_path"
+
+  exit_code=$?
+  return $exit_code
+}
+
+run "$@"
+
